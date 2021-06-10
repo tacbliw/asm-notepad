@@ -2,6 +2,7 @@
 #include <Windows.h>
 
 WNDCLASSEXA gWndClsEx;
+RECT gRect = {};
 
 CHAR wste_class[] = "wildcat";
 CHAR window_name[] = "WTF is WildCat doin ?";
@@ -16,8 +17,9 @@ LRESULT CALLBACK window_proc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam,
         DefWindowProcA(hwnd, uMsg, wParam, lParam);
     }
     else {
-        resize_textbox();
+        return 0;
     }
+    return 0;
 }
 
 int main()
