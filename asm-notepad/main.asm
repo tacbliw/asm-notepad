@@ -93,13 +93,13 @@ WNDCLASSEXA struct
 WNDCLASSEXA ends
 ; globals
 .data
-    HelloWorld  db "Hello World", 0
-    edit_class    db "EDIT", 0
-    wste_class    db "WSTE_Main", 0
-    textbox_font  db "Consolas", 0
-    window_title  db "WildCat's Text Editor", 0
-    file_filters  db "Any file (*.*)", 0, "*.*", 0, 0
-    error_msg     db "Error.", 0
+    HelloWorld      db "Hello World", 0
+    edit_class      db "EDIT", 0
+    wste_class      db "WSTE_Main", 0
+    textbox_font    db "Consolas", 0
+    window_title    db "WildCat's Text Editor", 0
+    file_filters    db "Any file (*.*)", 0, "*.*", 0, 0
+    error_msg       db "Error.", 0
 
     file_data_ptr   dq ?
     heap_handle     dq ?
