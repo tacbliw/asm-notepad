@@ -1,7 +1,7 @@
 #include <iostream>
 #include <Windows.h>
 
-WNDCLASSEXA wcx;
+WNDCLASSEXA wcx = { };
 RECT rect = {};
 HWND hwnd_main;
 HWND hwnd_textbox;
@@ -12,14 +12,14 @@ DWORD file_size;
 HANDLE heap_handle;
 LPVOID file_data_ptr;
 DWORD num_bytes_read;
-OPENFILENAMEA ofn;
+OPENFILENAMEA ofn = {};
 
-CHAR wste_class[] = "wildcat";
-CHAR window_name[] = "wtf is WildCat doin ?";
-CHAR edit_class[] = "EDIT";
-CHAR error_message[] = "Error.";
-CHAR file_filters[] = "Any file (*.*)\0*.*";
-CHAR textbox_font[] = "Consolas";
+const char wste_class[] = "wildcat";
+const char window_name[] = "wtf is WildCat doin ?";
+const char edit_class[] = "EDIT";
+const char error_message[] = "Error.";
+const char file_filters[] = "Any file (*.*)\0*.*";
+const char textbox_font[] = "Consolas";
 
 void error_msgbox() {
     MessageBoxA(HWND_DESKTOP, error_message, error_message, MB_OK);
@@ -115,15 +115,20 @@ int main()
     ofn.nMaxFile = MAX_PATH;
     ofn.Flags = OFN_HIDEREADONLY;
 
-    wcx.cbSize = 48;
-    wcx.lpfnWndProc = &window_proc;
-    wcx.hInstance = GetModuleHandleA(0);
-    wcx.hbrBackground = (HBRUSH)COLOR_WINDOW;
+    wcx.cbSize = sizeof(WNDCLASSEXA);
+    wcx.lpfnWndProc = window_proc;
+    wcx.hInstance = GetModuleHandle(0);
+    wcx.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcx.lpszClassName = wste_class;
     RegisterClassExA(&wcx);
+    std::cout << "RegisterClassExA error " << GetLastError() << " " << sizeof(WNDCLASSEXA) << std::endl;
     hwnd_main = CreateWindowExA(0, window_name, wste_class,
         WS_OVERLAPPEDWINDOW + WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
         640, 480, 0, 0, wcx.hInstance, 0);
+    if (hwnd_main == NULL) {
+        std::cout << "CreateWindowExA error " << GetLastError() << std::endl;
+        ExitProcess(0);
+    }
     create_textbox();
 
     // message_loop:
