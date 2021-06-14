@@ -3,7 +3,7 @@
 
 WNDCLASSEXA wcx = { };
 RECT rect = {};
-HWND hwnd_main;
+HWND hwnd_main = NULL;
 HWND hwnd_textbox;
 MSG msg;
 CHAR filename[MAX_PATH];
@@ -14,8 +14,8 @@ LPVOID file_data_ptr;
 DWORD num_bytes_read;
 OPENFILENAMEA ofn = {};
 
-const char wste_class[] = "wildcat";
-const char window_name[] = "wtf is WildCat doin ?";
+const char wste_class[] = "main_class";
+const char window_name[] = "C++ text editor - wildcat";
 const char edit_class[] = "EDIT";
 const char error_message[] = "Error.";
 const char file_filters[] = "Any file (*.*)\0*.*";
@@ -31,6 +31,7 @@ void read_file() {
         error_msgbox();
         return;
     }
+    file_handle = result;
     file_size = GetFileSize(file_handle, NULL) + 1;
     heap_handle = GetProcessHeap();
     file_data_ptr = HeapAlloc(heap_handle, HEAP_ZERO_MEMORY, file_size);
@@ -42,7 +43,7 @@ void read_file() {
 
 void write_file() {
     heap_handle = GetProcessHeap();
-    file_size = GetWindowTextLength(hwnd_textbox) + 1;
+    file_size = GetWindowTextLengthA(hwnd_textbox) + 1;
     LPVOID  file_data_ptr = HeapAlloc(heap_handle, HEAP_ZERO_MEMORY, file_size);
     GetWindowTextA(hwnd_textbox, (LPSTR)file_data_ptr, file_size);
     HANDLE result = CreateFileA(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -66,6 +67,7 @@ void open_file() {
 void save_file() {
     ofn.hwndOwner = hwnd_main;
     if (GetSaveFileNameA(&ofn)) {
+        write_file();
         SetWindowTextA(hwnd_main, filename);
     }
 }
@@ -76,7 +78,7 @@ void resize_textbox() {
 }
 
 void create_textbox() {
-    hwnd_textbox = CreateWindowExA(WS_EX_LEFT, edit_class, NULL,
+    hwnd_textbox = CreateWindowExA(0, edit_class, NULL,
         ES_LEFT + ES_MULTILINE + ES_WANTRETURN + WS_VISIBLE + WS_CHILD + WS_HSCROLL + WS_VSCROLL,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
@@ -85,30 +87,41 @@ void create_textbox() {
         hwnd_main,
         NULL,
         wcx.hInstance, NULL);
+    if (hwnd_textbox == NULL) {
+        std::cout << "CreateWindowExA at create_textbox() error " << GetLastError() << std::endl;
+    }
     SetFocus(hwnd_textbox);
-    HFONT font = CreateFontA(14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, textbox_font);
+    HFONT font = CreateFontA(14, 0, 0, 0, 0, FALSE, FALSE, FALSE,
+        ANSI_CHARSET,
+        OUT_DEFAULT_PRECIS,
+        CLIP_DEFAULT_PRECIS,
+        PROOF_QUALITY,
+        DEFAULT_PITCH,
+        textbox_font
+    );
     SendMessageA(hwnd_textbox, WM_SETFONT, (WPARAM)font, TRUE);
     resize_textbox();
 }
 
-LRESULT CALLBACK window_proc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam) {
-    if (uMsg == WM_DESTROY) {
+static LRESULT CALLBACK window_proc(_In_ HWND hwnd, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam) {
+    switch (uMsg) {
+    case WM_DESTROY:
         PostQuitMessage(0);
-    }
-    else if (uMsg == WM_SIZE) {
-        DefWindowProcA(hwnd, uMsg, wParam, lParam);
-    }
-    else {
+        break;
+    case WM_SIZE:
         resize_textbox();
+        break;
+    default:
+        return DefWindowProcA(hwnd, uMsg, wParam, lParam);
     }
-    return 0;
+    return FALSE;
 }
 
 int main()
 {   
     WORD keystate = 0;
 
-    ofn.lStructSize = 88;
+    ofn.lStructSize = sizeof ofn;
     ofn.lpstrFilter = file_filters;
     ofn.nFilterIndex = 1;
     ofn.lpstrFile = filename;
@@ -117,14 +130,13 @@ int main()
 
     wcx.cbSize = sizeof(WNDCLASSEXA);
     wcx.lpfnWndProc = window_proc;
-    wcx.hInstance = GetModuleHandle(0);
+    wcx.hInstance = GetModuleHandleA(0);
     wcx.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcx.lpszClassName = wste_class;
     RegisterClassExA(&wcx);
-    std::cout << "RegisterClassExA error " << GetLastError() << " " << sizeof(WNDCLASSEXA) << std::endl;
-    hwnd_main = CreateWindowExA(0, window_name, wste_class,
-        WS_OVERLAPPEDWINDOW + WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-        640, 480, 0, 0, wcx.hInstance, 0);
+    hwnd_main = CreateWindowExA(0, wste_class, window_name,
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+        640, 480, NULL, NULL, wcx.hInstance, 0);
     if (hwnd_main == NULL) {
         std::cout << "CreateWindowExA error " << GetLastError() << std::endl;
         ExitProcess(0);
@@ -133,44 +145,35 @@ int main()
 
     // message_loop:
     while (1) {
-        if (GetMessageA(&msg, NULL, 0, 0)) {
+        if (GetMessageA(&msg, NULL, 0, 0) == 0) {
+            std::cout << "GetMessageA returns 0 -> error code " << GetLastError() << std::endl;
             break;
         }
         if (msg.message == WM_KEYDOWN) {
             keystate = GetKeyState(VK_CONTROL);
-            if (keystate & 0b1000) {
-                TranslateMessage(&msg);
-                DispatchMessageA(&msg);
-            }
-            else {
+            if ((keystate & 0b10000000) != 0) {
                 if ((byte)msg.wParam == 0x4f) { // O
-                    std::cout << "open_file()" << std::endl;
-                    // open_file()
+                    open_file();
                 }
                 else if ((byte)msg.wParam == 0x53) { // S
                     keystate = GetKeyState(VK_SHIFT);
-                    if (keystate & 0b1000) {    // Shift pressed
-                        std::cout << "save_file()" << std::endl;
-                        // save_file()
+                    if (keystate & 0b10000000) {    // Shift pressed
+                        save_file();
                     }
                     else {
                         if (filename[0] == 0) {
-                            std::cout << "save_file()" << std::endl;
-                            // save_file()
+                            save_file();
                         }
                         else {
-                            std::cout << "write_file()" << std::endl;
-                            // write_file()
+                            write_file();
                         }
                     }
                 }
-                else {
-                    TranslateMessage(&msg);
-                    DispatchMessageA(&msg);
-                }
+                continue;
             }
         }
-
+        TranslateMessage(&msg);
+        DispatchMessageA(&msg);
     }
 
     ExitProcess(0);

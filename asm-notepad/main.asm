@@ -93,7 +93,6 @@ WNDCLASSEXA struct
 WNDCLASSEXA ends
 ; globals
 .data
-    HelloWorld      db "Hello World", 0
     edit_class      db "EDIT", 0
     wste_class      db "WSTE_Main", 0
     textbox_font    db "Consolas", 0
